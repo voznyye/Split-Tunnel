@@ -1,0 +1,32 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Configuration files with sensitive data
+*.key
+*.conf
+!*.conf.template
+server_private.key
+server_public.key
+client_private.key
+client_public.key
+
+# Selectel config
+.selectel-vpn-config
+selectel-vpn-config
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
