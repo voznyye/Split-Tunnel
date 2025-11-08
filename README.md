@@ -1,22 +1,24 @@
-# WireGuard Split Tunnel Setup
+# WireGuard Split Tunnel Setup for VDS by Selectel
 
-Automated solution for setting up WireGuard split tunnel with routing only specific IP addresses through VPN.
+Automated solution for setting up WireGuard split tunnel with routing only specific IP addresses through VPN, optimized for **VDS by Selectel** with hourly billing.
 
 ## Description
 
-This project allows you to quickly deploy WireGuard VPN with split tunnel functionality:
+This project allows you to quickly deploy WireGuard VPN with split tunnel functionality on **VDS by Selectel**:
 - Only specified IP addresses are routed through VPN
 - Other traffic goes directly
 - Maximum installation automation
 - Support for macOS, Linux, and Windows
 - GUI clients for easy management
+- **Automatic server start/stop** - pay only when VPN is in use (saves money!)
 
 ## Requirements
 
 ### Server
-- Linux server (Ubuntu/Debian/CentOS/Fedora/Arch)
+- **VDS by Selectel** (recommended: VDS Starter or VDS Basic)
+- Linux OS (Ubuntu/Debian recommended)
 - Root access
-- Public IP address
+- Public IP address (Russian IP guaranteed with Selectel)
 
 ### Clients
 - macOS, Linux, or Windows
@@ -36,8 +38,8 @@ cp .env.example .env
 **Important:** Never commit `.env` file to version control! It contains sensitive data.
 
 Key variables:
-- `SELECTEL_API_TOKEN` - For automatic server control
-- `SELECTEL_SERVER_ID` - Your Selectel server ID
+- `SELECTEL_API_TOKEN` - Selectel API token for automatic VDS control
+- `SELECTEL_SERVER_ID` - Your Selectel VDS server ID
 - `SERVER_IP` - Server public IP (auto-detected if empty)
 - `WG_PORT` - WireGuard port (default: 51820)
 - `CLIENT_DNS` - DNS for clients (default: 8.8.8.8)
@@ -83,9 +85,10 @@ The script automatically:
 ```
 
 **Usage example:**
-1. On server: `sudo ./install.sh` → choose "1" (server) → enter client name and IP addresses
+1. On Selectel VDS: `sudo ./install.sh` → choose "1" (server) → enter client name and IP addresses
 2. Copy config from server to client
 3. On client: `./install.sh client.conf` → everything installs automatically!
+4. Configure Selectel API for auto server control (optional but recommended)
 
 ---
 
@@ -96,7 +99,7 @@ If you need more detailed control, use separate scripts:
 ### 1. Server Installation
 
 ```bash
-# Clone the repository or copy files to the server
+# Clone the repository or copy files to your Selectel VDS
 cd server
 sudo chmod +x install.sh generate-client.sh
 sudo ./install.sh
@@ -107,6 +110,7 @@ The script will automatically:
 - Generate server keys
 - Configure firewall
 - Start WireGuard service
+- Secure SSH access
 
 ### 2. Create Client Config
 
@@ -123,7 +127,7 @@ sudo ./generate-client.sh myclient
 # Create config with specified IPs
 sudo ./generate-client.sh myclient "192.168.1.100/32,10.0.0.50/32"
 
-# Create config with automatic server control (Selectel)
+# Create config with automatic server control (Selectel VDS)
 sudo ./generate-client.sh myclient "192.168.1.100/32" --auto-server-control
 ```
 
@@ -212,26 +216,32 @@ AllowedIPs = 192.168.1.0/24
 AllowedIPs = 0.0.0.0/0, ::/0
 ```
 
-## Automatic Server Control (Selectel)
+## Automatic Server Control (VDS by Selectel)
 
-If you're using Selectel VPS with hourly billing, you can configure automatic server start/stop when connecting/disconnecting from VPN. This saves money by only paying when the VPN is actually in use.
+This project is optimized for **VDS by Selectel** with hourly billing. You can configure automatic server start/stop when connecting/disconnecting from VPN. This saves money by only paying when the VPN is actually in use.
+
+**Cost savings example:**
+- Without auto-control: ~110-150₽/month (24/7)
+- With auto-control: ~10-30₽/month (only when using VPN)
 
 ### Setup Automatic Server Control
 
 #### Step 1: Get Selectel API Token
 
-1. Go to https://panel.selectel.com/
+1. Go to **Selectel Control Panel**: https://panel.selectel.com/
 2. Navigate to: **API → Tokens**
 3. Click **"Create Token"**
 4. Give it a name (e.g., "VPN Auto Control")
-5. Select permissions: **"Servers"** (read and write)
-6. Copy the token (you won't see it again!)
+5. Select permissions: **"Servers"** (read and write) - this allows start/stop VDS
+6. Copy the token immediately (you won't see it again!)
 
-#### Step 2: Find Server ID
+#### Step 2: Find Your VDS Server ID
 
-1. Go to your server in Selectel panel
-2. Server ID is in the URL: `.../servers/12345/...`
-   Or check the server details page
+1. Go to your VDS server in Selectel panel
+2. Server ID is visible in:
+   - URL: `https://panel.selectel.com/cloud/servers/12345/...`
+   - Server details page (ID field)
+   - Server list (first column)
 
 #### Step 3: Generate Client Config with Auto-Control
 
@@ -468,7 +478,7 @@ wg-quick down "path\to\config.conf"
 
 If you're locked out of SSH after installation:
 
-1. **If you have console access (VPS panel):**
+1. **If you have console access (Selectel panel):**
    - Restore SSH config backup: `cp /etc/ssh/sshd_config.backup.* /etc/ssh/sshd_config`
    - Restart SSH: `systemctl restart sshd`
 
@@ -490,12 +500,42 @@ If you're locked out of SSH after installation:
    systemctl status sshd  # Check SSH service
    ```
 
-## VPS Recommendations
+## VDS by Selectel Recommendations
 
-For maximum cost savings, consider:
-- Russian VPS providers (Selectel, Timeweb, REG.RU)
-- Minimum plans (1 CPU, 512MB RAM is sufficient)
-- Ubuntu/Debian for easy installation
+This project is optimized for **VDS by Selectel**. Recommended configuration:
+
+### Recommended Plans
+
+**VDS Starter** (minimum, ~100-150₽/month if running 24/7):
+- 1 CPU core
+- 512 MB RAM
+- 10 GB SSD
+- Unlimited traffic
+- **Perfect for 1-5 clients**
+
+**VDS Basic** (recommended, ~200-250₽/month if running 24/7):
+- 1 CPU core
+- 1 GB RAM
+- 20 GB SSD
+- Unlimited traffic
+- **Perfect for 5-10 clients**
+
+### Why Selectel VDS?
+
+- ✅ **Russian IP addresses** - guaranteed
+- ✅ **Hourly billing** - pay only for usage time
+- ✅ **API support** - automatic server control
+- ✅ **Low prices** - from 0.15₽/hour
+- ✅ **Reliable infrastructure** - Moscow and St. Petersburg datacenters
+- ✅ **Easy management** - simple control panel
+
+### Getting Started with Selectel
+
+1. **Sign up**: https://selectel.ru/services/cloud/servers/
+2. **Choose plan**: VDS Starter or VDS Basic
+3. **Select region**: Moscow (MS1) or St. Petersburg (SPB) for Russian IP
+4. **Choose OS**: Ubuntu 22.04 LTS (recommended)
+5. **Deploy server** and follow installation instructions below
 
 ## License
 

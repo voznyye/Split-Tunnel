@@ -1,6 +1,6 @@
 #!/bin/bash
-# Selectel Server Control Script
-# Manages Selectel VPS server via API (start/stop/status)
+# Selectel VDS Server Control Script
+# Manages VDS by Selectel via API (start/stop/status)
 # Usage: ./selectel-server-control.sh start|stop|status
 
 # Don't exit on error in hooks - WireGuard should continue even if server control fails

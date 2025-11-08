@@ -18,7 +18,7 @@ if [ "$#" -lt 1 ]; then
     echo "  $0 client1 192.168.1.100/32,10.0.0.50/32 --auto-server-control"
     echo ""
     echo "Options:"
-    echo "  --auto-server-control  Enable automatic server start/stop via Selectel API"
+    echo "  --auto-server-control  Enable automatic VDS start/stop via Selectel API"
     echo ""
     echo "If IP addresses are not specified, a template with comments will be created"
     exit 1
