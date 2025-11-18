@@ -11,14 +11,10 @@ if [ -f "$SCRIPT_DIR/../.env" ]; then
 fi
 
 if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <client_name> [IP_addresses_for_routing] [--auto-server-control]"
+    echo "Usage: $0 <client_name> [IP_addresses_for_routing]"
     echo ""
     echo "Example:"
     echo "  $0 client1 192.168.1.100/32,10.0.0.50/32"
-    echo "  $0 client1 192.168.1.100/32,10.0.0.50/32 --auto-server-control"
-    echo ""
-    echo "Options:"
-    echo "  --auto-server-control  Enable automatic VDS start/stop via Selectel API"
     echo ""
     echo "If IP addresses are not specified, a template with comments will be created"
     exit 1
@@ -26,15 +22,6 @@ fi
 
 CLIENT_NAME=$1
 ALLOWED_IPS=${2:-""}
-ENABLE_AUTO_SERVER_CONTROL=false
-
-# Check for auto-server-control flag
-for arg in "$@"; do
-    if [ "$arg" = "--auto-server-control" ]; then
-        ENABLE_AUTO_SERVER_CONTROL=true
-        break
-    fi
-done
 
 WG_DIR="/etc/wireguard"
 CLIENTS_DIR="$WG_DIR/clients"
@@ -117,18 +104,6 @@ else
 # To route all traffic, use: AllowedIPs = 0.0.0.0/0, ::/0
 EOF
     echo "⚠ Template created. Don't forget to specify IP addresses in the AllowedIPs field"
-fi
-
-# Add server control hooks if enabled
-if [ "$ENABLE_AUTO_SERVER_CONTROL" = true ]; then
-    echo ""
-    echo "Adding automatic server control hooks..."
-    # Note: Client needs to configure the script path after copying config
-    # We'll add placeholders that need to be replaced on client side
-    sed -i '/^\[Interface\]/a # Auto server control hooks (configure path on client)' "$CLIENT_CONF"
-    sed -i '/^# Auto server control hooks/a PreUp = SELECTEL_CONTROL_SCRIPT start' "$CLIENT_CONF"
-    sed -i '/^PreUp = SELECTEL_CONTROL_SCRIPT start/a PostDown = SELECTEL_CONTROL_SCRIPT stop' "$CLIENT_CONF"
-    echo "✓ Server control hooks added (configure script path on client)"
 fi
 
 # Add client to server config

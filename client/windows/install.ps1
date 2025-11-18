@@ -101,11 +101,10 @@ Start-Process $wgGuiPath
 Write-Host ""
 Write-Host "=== Installation completed ===" -ForegroundColor Green
 Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "1. WireGuard GUI should open automatically" -ForegroundColor Yellow
-Write-Host "2. Click 'Import tunnel(s) from file' button or use File menu" -ForegroundColor Yellow
-Write-Host "3. Select file: $targetConfig" -ForegroundColor Yellow
-Write-Host "4. Click 'Activate' to start the tunnel" -ForegroundColor Yellow
+Write-Host "WireGuard GUI should open automatically." -ForegroundColor Cyan
+Write-Host "Configuration file: $targetConfig" -ForegroundColor Green
+Write-Host ""
+Write-Host "The configuration is ready to use - just click 'Activate' in the GUI." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "You can also manage tunnels from the WireGuard system tray icon" -ForegroundColor Cyan
 Write-Host ""

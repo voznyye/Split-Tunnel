@@ -1,6 +1,6 @@
 # WireGuard Split Tunnel Setup for VDS by Selectel
 
-Automated solution for setting up WireGuard split tunnel with routing only specific IP addresses through VPN, optimized for **VDS by Selectel** with hourly billing.
+Automated solution for setting up WireGuard split tunnel with routing only specific IP addresses through VPN, optimized for **VDS by Selectel**.
 
 ## Description
 
@@ -9,8 +9,7 @@ This project allows you to quickly deploy WireGuard VPN with split tunnel functi
 - Other traffic goes directly
 - Maximum installation automation
 - Support for macOS, Linux, and Windows
-- GUI clients for easy management
-- **Automatic server start/stop** - pay only when VPN is in use (saves money!)
+- GUI clients for easy management (automatically installed and launched)
 
 ## Requirements
 
@@ -38,8 +37,6 @@ cp .env.example .env
 **Important:** Never commit `.env` file to version control! It contains sensitive data.
 
 Key variables:
-- `SELECTEL_API_TOKEN` - Selectel API token for automatic VDS control
-- `SELECTEL_SERVER_ID` - Your Selectel VDS server ID
 - `SERVER_IP` - Server public IP (auto-detected if empty)
 - `WG_PORT` - WireGuard port (default: 51820)
 - `CLIENT_DNS` - DNS for clients (default: 8.8.8.8)
@@ -87,8 +84,7 @@ The script automatically:
 **Usage example:**
 1. On Selectel VDS: `sudo ./install.sh` → choose "1" (server) → enter client name and IP addresses
 2. Copy config from server to client
-3. On client: `./install.sh client.conf` → everything installs automatically!
-4. Configure Selectel API for auto server control (optional but recommended)
+3. On client: `./install.sh client.conf` → everything installs automatically, GUI opens ready to use!
 
 ---
 
@@ -126,9 +122,6 @@ sudo ./generate-client.sh myclient
 
 # Create config with specified IPs
 sudo ./generate-client.sh myclient "192.168.1.100/32,10.0.0.50/32"
-
-# Create config with automatic server control (Selectel VDS)
-sudo ./generate-client.sh myclient "192.168.1.100/32" --auto-server-control
 ```
 
 Config will be created in `/etc/wireguard/clients/<client_name>.conf`
@@ -216,125 +209,6 @@ AllowedIPs = 192.168.1.0/24
 AllowedIPs = 0.0.0.0/0, ::/0
 ```
 
-## Automatic Server Control (VDS by Selectel)
-
-This project is optimized for **VDS by Selectel** with hourly billing. You can configure automatic server start/stop when connecting/disconnecting from VPN. This saves money by only paying when the VPN is actually in use.
-
-**Cost savings example:**
-- Without auto-control: ~110-150₽/month (24/7)
-- With auto-control: ~10-30₽/month (only when using VPN)
-
-### Setup Automatic Server Control
-
-#### Step 1: Get Selectel API Token
-
-1. Go to **Selectel Control Panel**: https://panel.selectel.com/
-2. Navigate to: **API → Tokens**
-3. Click **"Create Token"**
-4. Give it a name (e.g., "VPN Auto Control")
-5. Select permissions: **"Servers"** (read and write) - this allows start/stop VDS
-6. Copy the token immediately (you won't see it again!)
-
-#### Step 2: Find Your VDS Server ID
-
-1. Go to your VDS server in Selectel panel
-2. Server ID is visible in:
-   - URL: `https://panel.selectel.com/cloud/servers/12345/...`
-   - Server details page (ID field)
-   - Server list (first column)
-
-#### Step 3: Generate Client Config with Auto-Control
-
-On the server, generate client config with `--auto-server-control` flag:
-
-```bash
-cd server
-sudo ./generate-client.sh myclient "192.168.1.100/32" --auto-server-control
-```
-
-This will add hooks to automatically start/stop the server.
-
-#### Step 4: Configure on Client
-
-When installing the client, the script will detect server control hooks and prompt you to configure API credentials:
-
-```bash
-cd client/macos  # or linux
-./install.sh /path/to/client.conf
-```
-
-Or configure manually:
-
-```bash
-# macOS/Linux
-~/.local/bin/selectel-config.sh setup  # macOS
-/usr/local/bin/selectel-config.sh setup  # Linux
-```
-
-Enter your API token and Server ID when prompted.
-
-#### Step 5: Test
-
-```bash
-# Test server control
-selectel-server-control.sh status
-
-# Test start/stop manually
-selectel-server-control.sh start
-selectel-server-control.sh stop
-```
-
-### How It Works
-
-- **When you connect to VPN**: `PreUp` hook runs → Server starts automatically
-- **When you disconnect**: `PostDown` hook runs → Server stops automatically
-
-The server will:
-- Start ~45 seconds before VPN connection (waiting for server to boot)
-- Stop immediately when VPN disconnects
-- Save money by only running when needed
-
-### Manual Configuration
-
-If you need to configure API credentials manually, edit `~/.selectel-vpn-config`:
-
-```bash
-export SELECTEL_API_TOKEN="your_token_here"
-export SELECTEL_SERVER_ID="your_server_id_here"
-```
-
-**Or use `.env` file** (recommended):
-
-```bash
-# Copy example file
-cp .env.example .env
-
-# Edit .env file
-nano .env
-
-# Set your values:
-SELECTEL_API_TOKEN=your_token_here
-SELECTEL_SERVER_ID=your_server_id_here
-```
-
-The scripts will automatically load variables from `.env` file if it exists.
-
-### Troubleshooting
-
-**Server doesn't start:**
-- Check API token permissions
-- Verify Server ID is correct
-- Check Selectel API status
-
-**Script not found:**
-- Make sure scripts are installed: `which selectel-server-control.sh`
-- Re-run client install script
-
-**Server starts but VPN doesn't connect:**
-- Wait longer (server may need more time to boot)
-- Check server is accessible: `ping <SERVER_IP>`
-
-
 ## Project Structure
 
 ```
@@ -352,11 +226,8 @@ Split-Tunnel/
 │   │   └── install.sh        # macOS installation (GUI) - detailed
 │   ├── linux/
 │   │   └── install.sh         # Linux installation - detailed
-│   ├── windows/
-│   │   └── install.ps1        # Windows installation (GUI) - detailed
-│   └── scripts/
-│       ├── selectel-server-control.sh  # Auto server start/stop
-│       └── selectel-config.sh          # API configuration
+│   └── windows/
+│       └── install.ps1        # Windows installation (GUI) - detailed
 ├── config/
 │   └── client.conf.template  # Client config template
 ├── scripts/
@@ -524,7 +395,6 @@ This project is optimized for **VDS by Selectel**. Recommended configuration:
 
 - ✅ **Russian IP addresses** - guaranteed
 - ✅ **Hourly billing** - pay only for usage time
-- ✅ **API support** - automatic server control
 - ✅ **Low prices** - from 0.15₽/hour
 - ✅ **Reliable infrastructure** - Moscow and St. Petersburg datacenters
 - ✅ **Easy management** - simple control panel

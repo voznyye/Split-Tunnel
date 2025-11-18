@@ -440,29 +440,6 @@ EOF
         cp "$CONFIG_FILE" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
         echo -e "${GREEN}✓ Config copied${NC}"
         
-        # Check for server control hooks
-        if grep -q "SELECTEL_CONTROL_SCRIPT" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"; then
-            echo -e "${CYAN}Setting up automatic server control...${NC}"
-            SCRIPTS_DIR="$HOME/.local/bin"
-            mkdir -p "$SCRIPTS_DIR"
-            
-            if [ -f "$SCRIPT_DIR/client/scripts/selectel-server-control.sh" ]; then
-                cp "$SCRIPT_DIR/client/scripts/selectel-server-control.sh" "$SCRIPTS_DIR/"
-                cp "$SCRIPT_DIR/client/scripts/selectel-config.sh" "$SCRIPTS_DIR/"
-                chmod +x "$SCRIPTS_DIR/selectel-server-control.sh"
-                chmod +x "$SCRIPTS_DIR/selectel-config.sh"
-                
-                CONTROL_SCRIPT="$SCRIPTS_DIR/selectel-server-control.sh"
-                sed -i '' "s|SELECTEL_CONTROL_SCRIPT|$CONTROL_SCRIPT|g" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
-                
-                echo -e "${GREEN}✓ Control scripts installed${NC}"
-                read -p "Configure Selectel API now? (y/n): " CONFIGURE_NOW
-                if [ "$CONFIGURE_NOW" = "y" ] || [ "$CONFIGURE_NOW" = "Y" ]; then
-                    "$SCRIPTS_DIR/selectel-config.sh" setup
-                fi
-            fi
-        fi
-        
         # Open WireGuard GUI
         echo ""
         echo -e "${CYAN}Opening WireGuard GUI...${NC}"
@@ -532,28 +509,6 @@ EOF
         cp "$CONFIG_FILE" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
         chmod 600 "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
         echo -e "${GREEN}✓ Config copied${NC}"
-        
-        # Check for server control hooks
-        if grep -q "SELECTEL_CONTROL_SCRIPT" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"; then
-            echo -e "${CYAN}Setting up automatic server control...${NC}"
-            SCRIPTS_DIR="/usr/local/bin"
-            
-            if [ -f "$SCRIPT_DIR/client/scripts/selectel-server-control.sh" ]; then
-                cp "$SCRIPT_DIR/client/scripts/selectel-server-control.sh" "$SCRIPTS_DIR/"
-                cp "$SCRIPT_DIR/client/scripts/selectel-config.sh" "$SCRIPTS_DIR/"
-                chmod +x "$SCRIPTS_DIR/selectel-server-control.sh"
-                chmod +x "$SCRIPTS_DIR/selectel-config.sh"
-                
-                CONTROL_SCRIPT="$SCRIPTS_DIR/selectel-server-control.sh"
-                sed -i "s|SELECTEL_CONTROL_SCRIPT|$CONTROL_SCRIPT|g" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
-                
-                echo -e "${GREEN}✓ Control scripts installed${NC}"
-                read -p "Configure Selectel API now? (y/n): " CONFIGURE_NOW
-                if [ "$CONFIGURE_NOW" = "y" ] || [ "$CONFIGURE_NOW" = "Y" ]; then
-                    "$SCRIPTS_DIR/selectel-config.sh" setup
-                fi
-            fi
-        fi
         
         # Enable and start service
         echo -e "${CYAN}Starting tunnel...${NC}"

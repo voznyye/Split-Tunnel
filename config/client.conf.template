@@ -6,7 +6,7 @@ DNS = 8.8.8.8
 [Peer]
 PublicKey = <SERVER_PUBLIC_KEY>
 Endpoint = <SERVER_IP>:51820
-AllowedIPs = 
+AllowedIPs = 88.212.250.100/32, 88.212.249.37/32
 # Specify IP addresses to route through VPN (split tunnel)
 # Example: AllowedIPs = 192.168.1.100/32, 10.0.0.50/32
 # To route all traffic, use: AllowedIPs = 0.0.0.0/0, ::/0

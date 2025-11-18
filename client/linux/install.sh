@@ -30,14 +30,23 @@ case $OS in
         apt-get update
         apt-get install -y wireguard wireguard-tools
         # Try to install GUI if available
+        echo "Checking for WireGuard GUI..."
         if apt-cache search wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
             echo "Installing WireGuard GUI..."
-            apt-get install -y wireguard-gui || echo "GUI not available in repositories"
+            apt-get install -y wireguard-gui || echo "⚠ GUI not available in repositories, using CLI only"
+        else
+            echo "⚠ WireGuard GUI not found in repositories, using CLI only"
+            echo "  You can install GUI manually or use systemctl commands"
         fi
         ;;
     centos|rhel|fedora)
         if [ "$OS" = "fedora" ]; then
             dnf install -y wireguard-tools
+            # Try to install GUI
+            if dnf search wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
+                echo "Installing WireGuard GUI..."
+                dnf install -y wireguard-gui || echo "⚠ GUI not available"
+            fi
         else
             yum install -y epel-release
             yum install -y wireguard-tools
@@ -48,7 +57,9 @@ case $OS in
         # Install GUI if available
         if pacman -Ss wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
             echo "Installing WireGuard GUI..."
-            pacman -S --noconfirm wireguard-gui || echo "GUI not available"
+            pacman -S --noconfirm wireguard-gui || echo "⚠ GUI not available"
+        else
+            echo "⚠ WireGuard GUI not found, using CLI only"
         fi
         ;;
     *)
@@ -89,41 +100,6 @@ chmod 600 "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
 
 echo "✓ Configuration copied to $WG_CONFIG_DIR/${CONFIG_NAME}.conf"
 
-# Check if config has server control hooks
-if grep -q "SELECTEL_CONTROL_SCRIPT" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"; then
-    echo ""
-    echo "Detected automatic server control hooks in config..."
-    
-    # Copy server control scripts
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SCRIPTS_DIR="/usr/local/bin"
-    
-    if [ -f "$SCRIPT_DIR/../scripts/selectel-server-control.sh" ]; then
-        cp "$SCRIPT_DIR/../scripts/selectel-server-control.sh" "$SCRIPTS_DIR/"
-        cp "$SCRIPT_DIR/../scripts/selectel-config.sh" "$SCRIPTS_DIR/"
-        chmod +x "$SCRIPTS_DIR/selectel-server-control.sh"
-        chmod +x "$SCRIPTS_DIR/selectel-config.sh"
-        
-        # Update config with script path
-        CONTROL_SCRIPT="$SCRIPTS_DIR/selectel-server-control.sh"
-        sed -i "s|SELECTEL_CONTROL_SCRIPT|$CONTROL_SCRIPT|g" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
-        
-        echo "✓ Server control scripts installed to $SCRIPTS_DIR"
-        echo ""
-        echo "⚠ IMPORTANT: Configure Selectel API credentials:"
-        echo "  $SCRIPTS_DIR/selectel-config.sh setup"
-        echo ""
-        read -p "Do you want to configure Selectel API now? (y/n): " CONFIGURE_NOW
-        if [ "$CONFIGURE_NOW" = "y" ] || [ "$CONFIGURE_NOW" = "Y" ]; then
-            "$SCRIPTS_DIR/selectel-config.sh" setup
-        else
-            echo "Remember to configure it before using the tunnel!"
-        fi
-    else
-        echo "⚠ Warning: Server control scripts not found. Please install them manually."
-    fi
-fi
-
 # Check for IP addresses in AllowedIPs
 ALLOWED_IPS=$(grep "^AllowedIPs" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf" | cut -d'=' -f2 | xargs)
 if [ -z "$ALLOWED_IPS" ] || [[ "$ALLOWED_IPS" == *"#"* ]]; then
@@ -154,13 +130,21 @@ if systemctl is-active --quiet wg-quick@${CONFIG_NAME}; then
     echo "Current status:"
     wg show ${CONFIG_NAME}
     echo ""
-    echo "To stop the tunnel, use:"
-    echo "  systemctl stop wg-quick@${CONFIG_NAME}"
+    echo "=== Installation completed ==="
     echo ""
-    echo "To check status:"
-    echo "  systemctl status wg-quick@${CONFIG_NAME}"
+    echo "Management commands:"
+    echo "  Status: systemctl status wg-quick@${CONFIG_NAME}"
+    echo "  Stop:   systemctl stop wg-quick@${CONFIG_NAME}"
+    echo "  Start:  systemctl start wg-quick@${CONFIG_NAME}"
     echo ""
-    echo "Note: If you have a GUI installed, you can also manage tunnels through it"
+    # Try to launch GUI if available
+    if command -v wireguard-gui &> /dev/null; then
+        echo "Launching WireGuard GUI..."
+        wireguard-gui &
+        echo "✓ GUI launched"
+    elif command -v wg-quick &> /dev/null && [ -n "$DISPLAY" ]; then
+        echo "Note: If you have a GUI installed, you can manage tunnels through it"
+    fi
 else
     echo "⚠ Error starting tunnel. Check configuration:"
     systemctl status wg-quick@${CONFIG_NAME}
