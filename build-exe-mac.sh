@@ -57,6 +57,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 const powershellScriptB64 = `POWERSHELL_SCRIPT_B64_PLACEHOLDER`
@@ -92,14 +93,24 @@ func main() {
 	defer os.Remove(scriptPath)
 
 	// Execute PowerShell script with all arguments
-	cmd := exec.Command("powershell.exe", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
-	cmd.Args = append(cmd.Args, os.Args[1:]...)
+	// Use -NoExit to keep window open on errors (for Windows 11 compatibility)
+	psArgs := []string{"-ExecutionPolicy", "Bypass", "-NoProfile", "-File", scriptPath}
+	psArgs = append(psArgs, os.Args[1:]...)
+	
+	cmd := exec.Command("powershell.exe", psArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
+	cmd.Dir = exeDir
 
 	err = cmd.Run()
 	if err != nil {
+		// Give user time to read error message
+		fmt.Fprintf(os.Stderr, "\nProcess exited with error. Waiting 5 seconds before closing...\n")
+		time.Sleep(5 * time.Second)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			os.Exit(exitError.ExitCode())
+		}
 		os.Exit(1)
 	}
 }
