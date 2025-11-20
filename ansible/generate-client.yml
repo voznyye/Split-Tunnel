@@ -18,15 +18,35 @@
     - name: Read server files
       slurp:
         src: "{{ wireguard_dir }}/{{ item }}"
-      register: "{{ item | regex_replace('.*/', '') | regex_replace('\\.', '_') }}_file"
+      register: file_results
       loop: [server_public.key, wg0.conf]
+      loop_control:
+        label: "{{ item }}"
 
     # Extract config values
     - name: Extract server config
       set_fact:
-        server_public_key: "{{ server_public_key_file.content | b64decode | trim }}"
-        server_public_ip: "{{ wg0_conf_file.content | b64decode | regex_search('Endpoint = ([^:]+)', '\\1') | default(server_public_ip) }}"
-        wireguard_port: "{{ wg0_conf_file.content | b64decode | regex_search('ListenPort = (\\d+)', '\\1') | default(wireguard_port) }}"
+        server_public_key: "{{ (file_results.results | selectattr('item', 'equalto', 'server_public.key') | list | first).content | b64decode | trim }}"
+        wireguard_port: "{{ ((file_results.results | selectattr('item', 'equalto', 'wg0.conf') | list | first).content | b64decode | regex_search('ListenPort = (\\d+)', '\\1') | first) | default(wireguard_port | default(51820)) | string }}"
+    
+    # Get server public IP (priority: inventory variable > ansible_host > API)
+    - name: Set server public IP from inventory or ansible_host
+      set_fact:
+        server_public_ip: "{{ server_public_ip | default(ansible_host) | default(ansible_default_ipv4.address) }}"
+    
+    - name: Get server public IP from API if using local IP
+      uri:
+        url: "https://api.ipify.org"
+        return_content: true
+      register: public_ip_result
+      failed_when: false
+      changed_when: false
+      when: server_public_ip == ansible_default_ipv4.address or server_public_ip is match('^10\\.|^172\\.(1[6-9]|2[0-9]|3[01])\\.|^192\\.168\\.')
+    
+    - name: Update server public IP from API result
+      set_fact:
+        server_public_ip: "{{ public_ip_result.content | default(server_public_ip) }}"
+      when: public_ip_result.content is defined and public_ip_result.content != ""
 
     # Determine client IP
     - name: Get last client IP
@@ -80,9 +100,7 @@
 
     # Reload WireGuard
     - name: Reload WireGuard
-      command: wg syncconf wg0 <(wg-quick strip wg0)
-      args:
-        executable: /bin/bash
+      shell: bash -c 'wg syncconf wg0 <(wg-quick strip wg0)'
 
     # Display info
     - name: Show client info

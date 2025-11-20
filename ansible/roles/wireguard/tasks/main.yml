@@ -77,14 +77,16 @@
 - name: Read server keys
   slurp:
     src: "{{ wireguard_dir }}/server_{{ item }}.key"
-  register: "{{ item }}_key"
+  register: key_results
   loop: [private, public]
+  loop_control:
+    label: "{{ item }}"
   no_log: "{{ item == 'private' }}"
 
 - name: Set server keys facts
   set_fact:
-    server_private_key: "{{ private_key.content | b64decode | trim }}"
-    server_public_key: "{{ public_key.content | b64decode | trim }}"
+    server_private_key: "{{ (key_results.results | selectattr('item', 'equalto', 'private') | list | first).content | b64decode | trim }}"
+    server_public_key: "{{ (key_results.results | selectattr('item', 'equalto', 'public') | list | first).content | b64decode | trim }}"
   no_log: true
 
 # Create server config
@@ -101,7 +103,7 @@
     rule: allow
     port: "{{ wireguard_port }}"
     proto: udp
-  when: wireguard_enable_firewall | bool and ansible_facts['ufw']['status'] == 'active'
+  when: wireguard_enable_firewall | bool and ansible_facts.get('ufw', {}).get('status', 'inactive') == 'active'
 
 - name: Allow WireGuard port (firewalld)
   firewalld:
@@ -109,7 +111,7 @@
     permanent: yes
     state: enabled
     immediate: yes
-  when: wireguard_enable_firewall | bool and ansible_facts['os_family'] == 'RedHat'
+  when: wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') == 'RedHat'
 
 - name: Allow WireGuard port (iptables)
   iptables:
@@ -117,7 +119,7 @@
     protocol: udp
     destination_port: "{{ wireguard_port }}"
     jump: ACCEPT
-  when: wireguard_enable_firewall | bool and ansible_facts['os_family'] != 'RedHat' and 'ufw' not in ansible_facts
+  when: wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') != 'RedHat' and ansible_facts.get('ufw', {}).get('status', 'inactive') != 'active'
 
 # Secure SSH
 - name: Backup SSH config
@@ -142,7 +144,7 @@
     line: "{{ item.line }}"
   loop:
     - { regexp: '^PermitRootLogin', line: 'PermitRootLogin prohibit-password' }
-    - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication {{ "no" if (ssh_keys.matches | length > 0) else "yes" }}' }
+    - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication {{ "no" if ((ssh_keys.files | default([])) | length > 0) else "yes" }}' }
     - { regexp: '^PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
     - { regexp: '^PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
     - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
@@ -159,7 +161,7 @@
     ctstate: "{{ item }}"
     jump: ACCEPT
   loop: [ESTABLISHED,RELATED, NEW]
-  when: wireguard_enable_ssh_security | bool and ansible_facts['os_family'] != 'RedHat'
+  when: wireguard_enable_ssh_security | bool and ansible_facts.get('os_family', '') != 'RedHat'
 
 # Start WireGuard
 - name: Enable and start WireGuard
