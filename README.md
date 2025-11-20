@@ -92,34 +92,53 @@ The script automatically:
 
 #### Windows
 
-**Простая установка (3 шага):**
+**Fully automatic installation:**
 
-1. **Запустите PowerShell от администратора:**
-   - Нажмите `Win + X`
-   - Выберите "Windows PowerShell (Admin)" или "Terminal (Admin)"
-
-2. **Перейдите в папку с проектом и запустите:**
-   ```powershell
-   cd C:\path\to\Split-Tunnel
-   .\install.ps1
+1. **Create EXE on Mac (one time):**
+   ```bash
+   brew install go
+   ./build-exe-mac.sh
    ```
+
+2. **Configure server-config.ini (one time):**
+   ```ini
+   [server]
+   ip = YOUR_SERVER_IP
+   user = root
    
-   Скрипт автоматически найдет файл `.conf` в текущей папке!
+   [client]
+   name = windows-client
+   allowed_ips = IP1/32,IP2/32
+   ```
 
-3. **В WireGuard GUI нажмите "Activate"** - готово!
+3. **Run `install.exe`** - everything is automatic!
 
-**Или укажите конфиг вручную:**
+**What happens automatically:**
+- ✅ Downloads config from server via SCP
+- ✅ If config doesn't exist - creates it via Ansible
+- ✅ Installs WireGuard GUI
+- ✅ Imports config into WireGuard
+- ✅ Ready to use!
+
+**Or use command line parameters:**
 ```powershell
-.\install.ps1 myclient.conf
+.\install.ps1 -Server YOUR_SERVER_IP -User root -Client myclient -AllowedIPs "IP1/32,IP2/32"
 ```
 
-**Что делает скрипт автоматически:**
-- ✅ Находит конфиг файл автоматически
-- ✅ Проверяет и исправляет Endpoint если нужно
-- ✅ Устанавливает WireGuard GUI (через winget или Chocolatey)
-- ✅ Копирует конфиг в нужную папку
-- ✅ Открывает WireGuard GUI
-- ✅ Конфиг появляется автоматически в списке туннелей
+**Setting up automatic config retrieval:**
+
+1. Copy `server-config.ini.example` to `server-config.ini`
+2. Fill in server settings in `server-config.ini`
+3. Run `install.exe` - config will be downloaded automatically!
+
+**Or use environment variables:**
+```powershell
+$env:WG_SERVER_IP = "YOUR_SERVER_IP"
+$env:WG_SERVER_USER = "root"
+$env:WG_CLIENT_NAME = "windows-client"
+$env:WG_ALLOWED_IPS = "IP1/32,IP2/32"
+.\install.ps1
+```
 
 ## Split Tunnel Configuration
 
@@ -168,10 +187,13 @@ AllowedIPs = 0.0.0.0/0, ::/0
 Split-Tunnel/
 ├── install.sh                # Client installer (macOS/Linux)
 ├── install.ps1               # Client installer (Windows)
+├── install.exe               # Windows EXE installer (build with build-exe-mac.sh)
+├── build-exe-mac.sh          # Build EXE on macOS
+├── server-config.ini.example # Server config template for Windows
 ├── ansible/                  # Server automation
 │   ├── playbook.yml          # Server installation playbook
 │   ├── generate-client.yml   # Client generation playbook
-│   ├── inventory.yml.example # Inventory template
+│   ├── inventory.yml         # Server inventory
 │   └── roles/wireguard/      # WireGuard role
 └── README.md                 # This file
 ```

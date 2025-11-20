@@ -1,0 +1,25 @@
+# Server Configuration
+# Copy this file to server-config.ini and fill in your server details
+# Or set environment variables: WG_SERVER_IP, WG_SERVER_USER, WG_CLIENT_NAME
+# This file is safe to commit - your actual server-config.ini won't be committed
+
+[server]
+# Server IP address
+ip = YOUR_SERVER_IP
+
+# SSH user (usually root)
+user = root
+
+# SSH port (default: 22)
+port = 22
+
+# Path to SSH private key (optional, uses default if not specified)
+# ssh_key = C:\Users\YourName\.ssh\id_rsa
+
+[client]
+# Client name (will be created if doesn't exist)
+name = windows-client
+
+# IP addresses to route through VPN (comma-separated)
+# Example: 88.212.250.100/32,88.212.249.37/32
+allowed_ips = 

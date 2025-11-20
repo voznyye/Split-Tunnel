@@ -1,0 +1,30 @@
+---
+# Ansible Inventory
+# Copy this file and fill in your server details
+# This file is in .gitignore - your actual inventory.yml won't be committed
+
+all:
+  children:
+    servers:
+      hosts:
+        wireguard-server:
+          ansible_host: YOUR_SERVER_IP  # Your server IP
+          ansible_user: root            # SSH user
+          # ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Optional: specify SSH key
+          # ansible_ssh_common_args: '-o StrictHostKeyChecking=no'  # Optional: disable host key checking
+
+      vars:
+        # Server configuration (can be overridden per host)
+        server_public_ip: YOUR_SERVER_IP  # Public IP of the server (auto-detected if empty)
+        wireguard_port: 51820
+        wireguard_vpn_network: "10.0.0.0/24"
+        wireguard_server_vpn_ip: "10.0.0.1"
+        wireguard_client_dns: "8.8.8.8"
+        
+        # Optional: auto-detect interface, or specify manually
+        # wireguard_interface: "eth0"
+        
+        # Security settings
+        wireguard_enable_ip_forwarding: true
+        wireguard_enable_firewall: true
+        wireguard_enable_ssh_security: true

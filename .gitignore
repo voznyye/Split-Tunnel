@@ -35,3 +35,7 @@ Thumbs.db
 ansible/inventory.yml
 ansible/inventory.ini
 ansible/*.retry
+
+# Windows config
+server-config.ini
+install.exe
