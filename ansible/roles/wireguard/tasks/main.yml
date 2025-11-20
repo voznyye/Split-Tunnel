@@ -1,0 +1,180 @@
+---
+# WireGuard server installation tasks
+
+# Detect OS and network settings
+- name: Set OS facts
+  set_fact:
+    os_family: "{{ ansible_os_family | lower }}"
+    os_id: "{{ ansible_distribution | lower }}"
+    wireguard_interface: "{{ wireguard_interface | default(ansible_default_ipv4.interface) }}"
+
+# Get server public IP
+- name: Get public IP
+  uri:
+    url: "https://api.ipify.org"
+    return_content: true
+  register: public_ip_result
+  failed_when: false
+  changed_when: false
+
+- name: Set server public IP
+  set_fact:
+    server_public_ip: "{{ server_public_ip | default(public_ip_result.content | default(ansible_default_ipv4.address)) }}"
+
+# Install WireGuard packages
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  when: os_family == "debian"
+
+- name: Install EPEL repo
+  yum:
+    name: epel-release
+    state: present
+  when: os_family == "redhat" and os_id != "fedora"
+
+- name: Install WireGuard packages
+  package:
+    name:
+      - "{{ 'wireguard' if os_family == 'debian' else 'wireguard-tools' }}"
+      - wireguard-tools
+      - qrencode
+    state: present
+
+# Enable IP forwarding
+- name: Enable IP forwarding
+  sysctl:
+    name: "{{ item }}"
+    value: "1"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop: [net.ipv4.ip_forward, net.ipv6.conf.all.forwarding]
+  when: wireguard_enable_ip_forwarding | bool
+
+# Create directories
+- name: Create WireGuard directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: ["{{ wireguard_dir }}", "{{ wireguard_clients_dir }}"]
+
+# Generate server keys
+- name: Check server keys
+  stat:
+    path: "{{ wireguard_dir }}/server_private.key"
+  register: key_stat
+
+- name: Generate server keys
+  shell: |
+    wg genkey | tee {{ wireguard_dir }}/server_private.key | wg pubkey > {{ wireguard_dir }}/server_public.key
+    chmod 600 {{ wireguard_dir }}/server_private.key
+    chmod 644 {{ wireguard_dir }}/server_public.key
+  when: not key_stat.stat.exists
+  no_log: true
+
+- name: Read server keys
+  slurp:
+    src: "{{ wireguard_dir }}/server_{{ item }}.key"
+  register: "{{ item }}_key"
+  loop: [private, public]
+  no_log: "{{ item == 'private' }}"
+
+- name: Set server keys facts
+  set_fact:
+    server_private_key: "{{ private_key.content | b64decode | trim }}"
+    server_public_key: "{{ public_key.content | b64decode | trim }}"
+  no_log: true
+
+# Create server config
+- name: Create WireGuard config
+  template:
+    src: wg0.conf.j2
+    dest: "{{ wireguard_dir }}/wg0.conf"
+    mode: "0600"
+  notify: restart wireguard
+
+# Configure firewall
+- name: Allow WireGuard port
+  ufw:
+    rule: allow
+    port: "{{ wireguard_port }}"
+    proto: udp
+  when: wireguard_enable_firewall | bool and ansible_facts['ufw']['status'] == 'active'
+
+- name: Allow WireGuard port (firewalld)
+  firewalld:
+    port: "{{ wireguard_port }}/udp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: wireguard_enable_firewall | bool and ansible_facts['os_family'] == 'RedHat'
+
+- name: Allow WireGuard port (iptables)
+  iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "{{ wireguard_port }}"
+    jump: ACCEPT
+  when: wireguard_enable_firewall | bool and ansible_facts['os_family'] != 'RedHat' and 'ufw' not in ansible_facts
+
+# Secure SSH
+- name: Backup SSH config
+  copy:
+    src: /etc/ssh/sshd_config
+    dest: "/etc/ssh/sshd_config.backup.{{ ansible_date_time.epoch }}"
+    remote_src: yes
+  when: wireguard_enable_ssh_security | bool
+
+- name: Check SSH keys
+  find:
+    paths: [/root/.ssh, /home]
+    patterns: authorized_keys
+    file_type: file
+  register: ssh_keys
+  when: wireguard_enable_ssh_security | bool
+
+- name: Configure SSH security
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^PermitRootLogin', line: 'PermitRootLogin prohibit-password' }
+    - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication {{ "no" if (ssh_keys.matches | length > 0) else "yes" }}' }
+    - { regexp: '^PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+    - { regexp: '^PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+    - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
+    - { regexp: '^MaxAuthTries', line: 'MaxAuthTries {{ ssh_max_auth_tries }}' }
+    - { regexp: '^LoginGraceTime', line: 'LoginGraceTime {{ ssh_login_grace_time }}' }
+  when: wireguard_enable_ssh_security | bool
+  notify: restart sshd
+
+- name: Configure SSH iptables rules
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "{{ ssh_port }}"
+    ctstate: "{{ item }}"
+    jump: ACCEPT
+  loop: [ESTABLISHED,RELATED, NEW]
+  when: wireguard_enable_ssh_security | bool and ansible_facts['os_family'] != 'RedHat'
+
+# Start WireGuard
+- name: Enable and start WireGuard
+  systemd:
+    name: "wg-quick@wg0"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+# Display info
+- name: Show server info
+  debug:
+    msg:
+      - "WireGuard Server Installed"
+      - "Public Key: {{ server_public_key }}"
+      - "IP: {{ server_public_ip }}"
+      - "Port: {{ wireguard_port }}"
+      - "Create client: ansible-playbook -i inventory.yml generate-client.yml -e 'client_name=NAME' -e 'allowed_ips=IP1/32,IP2/32'"

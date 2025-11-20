@@ -1,0 +1,25 @@
+---
+# WireGuard role default variables
+
+# Server config
+wireguard_port: 51820
+wireguard_vpn_network: "10.0.0.0/24"
+wireguard_server_vpn_ip: "10.0.0.1"
+wireguard_interface: "eth0"  # Auto-detected if not set
+
+# Client config
+wireguard_client_dns: "8.8.8.8"
+
+# System settings
+wireguard_enable_ip_forwarding: true
+wireguard_enable_firewall: true
+wireguard_enable_ssh_security: true
+
+# SSH security
+ssh_max_auth_tries: 3
+ssh_login_grace_time: 30
+ssh_port: 22
+
+# Paths
+wireguard_dir: "/etc/wireguard"
+wireguard_clients_dir: "{{ wireguard_dir }}/clients"

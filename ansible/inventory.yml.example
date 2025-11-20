@@ -1,0 +1,27 @@
+---
+# Ansible inventory example
+# Copy to inventory.yml and configure your server
+
+all:
+  children:
+    servers:
+      hosts:
+        wireguard-server:
+          ansible_host: YOUR_SERVER_IP  # Server IP address
+          ansible_user: root             # SSH user
+          # ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Optional: SSH key path
+
+      vars:
+        # Server configuration
+        server_public_ip: YOUR_SERVER_IP  # Public IP (auto-detected if empty)
+        wireguard_port: 51820
+        wireguard_vpn_network: "10.0.0.0/24"
+        wireguard_server_vpn_ip: "10.0.0.1"
+        wireguard_client_dns: "8.8.8.8"
+        # wireguard_interface: "eth0"  # Auto-detected if not set
+        
+        # Security settings
+        wireguard_enable_ip_forwarding: true
+        wireguard_enable_firewall: true
+        wireguard_enable_ssh_security: true
+

@@ -355,13 +355,34 @@ if [ "$ROLE_CHOICE" = "2" ]; then
                 read -p "Enter server address (user@host): " SERVER_HOST
                 read -p "Enter client config name: " CLIENT_NAME
                 echo -e "${CYAN}Downloading config from server...${NC}"
-                scp "$SERVER_HOST:/etc/wireguard/clients/${CLIENT_NAME}.conf" ./client.conf
-                CONFIG_FILE="./client.conf"
-                if [ ! -f "$CONFIG_FILE" ]; then
-                    echo -e "${RED}Failed to download config${NC}"
+                if scp "$SERVER_HOST:/etc/wireguard/clients/${CLIENT_NAME}.conf" ./client.conf 2>/dev/null; then
+                    CONFIG_FILE="./client.conf"
+                    if [ -f "$CONFIG_FILE" ]; then
+                        echo -e "${GREEN}✓ Config downloaded${NC}"
+                    else
+                        echo -e "${RED}Failed to download config${NC}"
+                        exit 1
+                    fi
+                else
+                    echo -e "${RED}✗ Failed to download config${NC}"
+                    echo ""
+                    echo -e "${YELLOW}The config file '/etc/wireguard/clients/${CLIENT_NAME}.conf' was not found on the server.${NC}"
+                    echo ""
+                    echo -e "${CYAN}To create the config on the server, run:${NC}"
+                    echo -e "  ${GREEN}ssh $SERVER_HOST${NC}"
+                    echo -e "  ${GREEN}cd /path/to/Split-Tunnel${NC}"
+                    echo -e "  ${GREEN}sudo ./install.sh${NC}"
+                    echo -e "  ${GREEN}# Choose option 1 (Server), then create client config${NC}"
+                    echo ""
+                    echo -e "${CYAN}Or use the server script directly:${NC}"
+                    echo -e "  ${GREEN}ssh $SERVER_HOST 'sudo /path/to/Split-Tunnel/server/generate-client.sh ${CLIENT_NAME} \"IP1/32,IP2/32\"'${NC}"
+                    echo ""
+                    echo -e "${CYAN}Alternatively, you can:${NC}"
+                    echo -e "  1) Use option 1 if you already have a config file"
+                    echo -e "  2) Use option 3 to create config manually"
+                    echo ""
                     exit 1
                 fi
-                echo -e "${GREEN}✓ Config downloaded${NC}"
                 ;;
             3)
                 read -p "Enter client private key: " CLIENT_PRIVATE_KEY

@@ -1,0 +1,13 @@
+# WireGuard server configuration
+[Interface]
+Address = {{ wireguard_server_vpn_ip }}/24
+ListenPort = {{ wireguard_port }}
+PrivateKey = {{ server_private_key }}
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ wireguard_interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ wireguard_interface }} -j MASQUERADE
+
+# Clients added via Ansible generate-client.yml
+# Format:
+# [Peer]
+# PublicKey = <CLIENT_PUBLIC_KEY>
+# AllowedIPs = 10.0.0.X/32

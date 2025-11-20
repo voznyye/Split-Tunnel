@@ -88,6 +88,45 @@ The script automatically:
 
 ---
 
+## 🚀 Ansible Automation (Recommended for Server Setup)
+
+**Don't want to manually access the server?** Use Ansible for automated installation!
+
+### Quick Ansible Setup
+
+```bash
+# 1. Install Ansible (if not installed)
+# macOS: brew install ansible
+# Linux: sudo apt-get install ansible
+
+# 2. Configure inventory
+cd ansible
+cp inventory.yml.example inventory.yml
+# Edit inventory.yml and set your server IP
+
+# 3. Install WireGuard server
+ansible-playbook -i inventory.yml playbook.yml
+
+# 4. Create client configuration
+ansible-playbook -i inventory.yml generate-client.yml \
+  -e 'client_name=myclient' \
+  -e 'allowed_ips=192.168.1.100/32,10.0.0.50/32'
+
+# 5. Download configuration
+scp root@your-server:/etc/wireguard/clients/myclient.conf ./
+```
+
+**Ansible Benefits:**
+- ✅ No manual server access required
+- ✅ Idempotent - can run multiple times
+- ✅ Easy multi-server management
+- ✅ Configuration versioning
+- ✅ Automatic client config generation
+
+See detailed documentation: [ansible/README.md](ansible/README.md)
+
+---
+
 ## Detailed Installation (Legacy Method)
 
 If you need more detailed control, use separate scripts:

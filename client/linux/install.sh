@@ -1,153 +1,58 @@
 #!/bin/bash
+# WireGuard client installation for Linux
 
 set -e
 
-echo "=== WireGuard Split Tunnel Client Installation (Linux) ==="
-echo ""
+[ "$EUID" -ne 0 ] && { echo "Error: Run with sudo"; exit 1; }
 
-# Check for root privileges
-if [ "$EUID" -ne 0 ]; then 
-    echo "Error: This script must be run as root (use sudo)"
-    exit 1
-fi
-
-# Detect Linux distribution
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=$ID
-else
-    echo "Error: Unable to detect Linux distribution"
-    exit 1
-fi
-
-echo "Detected distribution: $OS"
-echo ""
+# Detect OS
+[ -f /etc/os-release ] && . /etc/os-release || { echo "Error: Cannot detect OS"; exit 1; }
+OS=$ID
 
 # Install WireGuard
 echo "Installing WireGuard..."
 case $OS in
-    ubuntu|debian)
-        apt-get update
-        apt-get install -y wireguard wireguard-tools
-        # Try to install GUI if available
-        echo "Checking for WireGuard GUI..."
-        if apt-cache search wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
-            echo "Installing WireGuard GUI..."
-            apt-get install -y wireguard-gui || echo "⚠ GUI not available in repositories, using CLI only"
-        else
-            echo "⚠ WireGuard GUI not found in repositories, using CLI only"
-            echo "  You can install GUI manually or use systemctl commands"
-        fi
-        ;;
-    centos|rhel|fedora)
-        if [ "$OS" = "fedora" ]; then
-            dnf install -y wireguard-tools
-            # Try to install GUI
-            if dnf search wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
-                echo "Installing WireGuard GUI..."
-                dnf install -y wireguard-gui || echo "⚠ GUI not available"
-            fi
-        else
-            yum install -y epel-release
-            yum install -y wireguard-tools
-        fi
-        ;;
-    arch|manjaro)
-        pacman -S --noconfirm wireguard-tools
-        # Install GUI if available
-        if pacman -Ss wireguard-gui 2>/dev/null | grep -q wireguard-gui; then
-            echo "Installing WireGuard GUI..."
-            pacman -S --noconfirm wireguard-gui || echo "⚠ GUI not available"
-        else
-            echo "⚠ WireGuard GUI not found, using CLI only"
-        fi
-        ;;
-    *)
-        echo "Error: Unsupported distribution. Please install WireGuard manually."
-        exit 1
-        ;;
+    ubuntu|debian) apt-get update -qq && apt-get install -y wireguard wireguard-tools ;;
+    centos|rhel) yum install -y epel-release && yum install -y wireguard-tools ;;
+    fedora) dnf install -y wireguard-tools ;;
+    arch|manjaro) pacman -S --noconfirm wireguard-tools ;;
+    *) echo "Error: Unsupported OS"; exit 1 ;;
 esac
 
-# Check for config file
-CONFIG_FILE=""
-if [ -n "$1" ]; then
-    CONFIG_FILE="$1"
-elif [ -f "client.conf" ]; then
-    CONFIG_FILE="client.conf"
-elif [ -f "../config/client.conf" ]; then
-    CONFIG_FILE="../config/client.conf"
-else
-    echo ""
-    echo "Configuration file not found."
-    read -p "Enter path to WireGuard config: " CONFIG_FILE
-fi
-
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "Error: Configuration file not found: $CONFIG_FILE"
-    exit 1
-fi
-
-# Determine interface name from config
-CONFIG_NAME=$(basename "$CONFIG_FILE" .conf)
-if [ "$CONFIG_NAME" = "client" ]; then
-    CONFIG_NAME="wg0"
-fi
+# Find config file
+CONFIG_FILE=${1:-$(find . .. -name "client.conf" -o -name "*.conf" 2>/dev/null | head -1)}
+[ -z "$CONFIG_FILE" ] && read -p "Enter config path: " CONFIG_FILE
+[ ! -f "$CONFIG_FILE" ] && { echo "Error: Config not found: $CONFIG_FILE"; exit 1; }
 
 # Copy config
-WG_CONFIG_DIR="/etc/wireguard"
-cp "$CONFIG_FILE" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
-chmod 600 "$WG_CONFIG_DIR/${CONFIG_NAME}.conf"
+CONFIG_NAME=$(basename "$CONFIG_FILE" .conf)
+[ "$CONFIG_NAME" = "client" ] && CONFIG_NAME="wg0"
+cp "$CONFIG_FILE" "/etc/wireguard/${CONFIG_NAME}.conf"
+chmod 600 "/etc/wireguard/${CONFIG_NAME}.conf"
 
-echo "✓ Configuration copied to $WG_CONFIG_DIR/${CONFIG_NAME}.conf"
+# Check AllowedIPs
+ALLOWED_IPS=$(grep "^AllowedIPs" "/etc/wireguard/${CONFIG_NAME}.conf" | cut -d'=' -f2 | xargs)
+[ -z "$ALLOWED_IPS" ] || [[ "$ALLOWED_IPS" == *"#"* ]] && {
+    echo "⚠ WARNING: AllowedIPs is empty!"
+    echo "Edit: nano /etc/wireguard/${CONFIG_NAME}.conf"
+    read -p "Press Enter after editing..."
+}
 
-# Check for IP addresses in AllowedIPs
-ALLOWED_IPS=$(grep "^AllowedIPs" "$WG_CONFIG_DIR/${CONFIG_NAME}.conf" | cut -d'=' -f2 | xargs)
-if [ -z "$ALLOWED_IPS" ] || [[ "$ALLOWED_IPS" == *"#"* ]]; then
-    echo ""
-    echo "⚠ WARNING: AllowedIPs field is empty or contains comments!"
-    echo "Open the file and specify IP addresses to route through VPN:"
-    echo "  nano $WG_CONFIG_DIR/${CONFIG_NAME}.conf"
-    echo ""
-    echo "Example:"
-    echo "  AllowedIPs = 192.168.1.100/32, 10.0.0.50/32"
-    echo ""
-    read -p "Press Enter after filling in AllowedIPs..."
-fi
+# Start service
+systemctl enable wg-quick@${CONFIG_NAME} >/dev/null 2>&1
+systemctl start wg-quick@${CONFIG_NAME} >/dev/null 2>&1
 
-# Enable and start service
-echo ""
-echo "Configuring autostart..."
-systemctl enable wg-quick@${CONFIG_NAME}
-
-echo "Starting WireGuard tunnel..."
-systemctl start wg-quick@${CONFIG_NAME}
-
-# Check status
 sleep 2
-if systemctl is-active --quiet wg-quick@${CONFIG_NAME}; then
-    echo "✓ WireGuard tunnel started successfully"
-    echo ""
-    echo "Current status:"
+systemctl is-active --quiet wg-quick@${CONFIG_NAME} && {
+    echo "✓ Tunnel started"
     wg show ${CONFIG_NAME}
-    echo ""
-    echo "=== Installation completed ==="
-    echo ""
-    echo "Management commands:"
-    echo "  Status: systemctl status wg-quick@${CONFIG_NAME}"
-    echo "  Stop:   systemctl stop wg-quick@${CONFIG_NAME}"
-    echo "  Start:  systemctl start wg-quick@${CONFIG_NAME}"
-    echo ""
-    # Try to launch GUI if available
-    if command -v wireguard-gui &> /dev/null; then
-        echo "Launching WireGuard GUI..."
-        wireguard-gui &
-        echo "✓ GUI launched"
-    elif command -v wg-quick &> /dev/null && [ -n "$DISPLAY" ]; then
-        echo "Note: If you have a GUI installed, you can manage tunnels through it"
-    fi
-else
-    echo "⚠ Error starting tunnel. Check configuration:"
+} || {
+    echo "⚠ Error starting tunnel"
     systemctl status wg-quick@${CONFIG_NAME}
     exit 1
-fi
+}
 
+echo ""
+echo "=== Installation Complete ==="
+echo "Status: systemctl status wg-quick@${CONFIG_NAME}"
+echo "Stop: systemctl stop wg-quick@${CONFIG_NAME}"

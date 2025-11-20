@@ -1,0 +1,18 @@
+# Ansible inventory INI format example
+# Copy to inventory.ini and configure your server
+
+[servers]
+wireguard-server ansible_host=YOUR_SERVER_IP ansible_user=root
+
+[servers:vars]
+# Server configuration
+server_public_ip=YOUR_SERVER_IP
+wireguard_port=51820
+wireguard_vpn_network=10.0.0.0/24
+wireguard_server_vpn_ip=10.0.0.1
+wireguard_client_dns=8.8.8.8
+
+# Security settings
+wireguard_enable_ip_forwarding=true
+wireguard_enable_firewall=true
+wireguard_enable_ssh_security=true

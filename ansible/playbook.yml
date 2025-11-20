@@ -1,0 +1,9 @@
+---
+# WireGuard server installation playbook
+# Usage: ansible-playbook -i inventory.yml playbook.yml
+
+- name: Install WireGuard server
+  hosts: servers
+  become: yes
+  roles:
+    - wireguard

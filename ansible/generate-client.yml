@@ -1,0 +1,106 @@
+---
+# Generate WireGuard client configuration
+# Usage: ansible-playbook -i inventory.yml generate-client.yml -e 'client_name=NAME' -e 'allowed_ips=IP1/32,IP2/32'
+
+- name: Generate client config
+  hosts: servers
+  become: yes
+  vars:
+    wireguard_dir: "/etc/wireguard"
+    wireguard_clients_dir: "{{ wireguard_dir }}/clients"
+  tasks:
+    - name: Validate client_name
+      fail:
+        msg: "client_name required: -e 'client_name=NAME'"
+      when: client_name is not defined
+
+    # Read server data
+    - name: Read server files
+      slurp:
+        src: "{{ wireguard_dir }}/{{ item }}"
+      register: "{{ item | regex_replace('.*/', '') | regex_replace('\\.', '_') }}_file"
+      loop: [server_public.key, wg0.conf]
+
+    # Extract config values
+    - name: Extract server config
+      set_fact:
+        server_public_key: "{{ server_public_key_file.content | b64decode | trim }}"
+        server_public_ip: "{{ wg0_conf_file.content | b64decode | regex_search('Endpoint = ([^:]+)', '\\1') | default(server_public_ip) }}"
+        wireguard_port: "{{ wg0_conf_file.content | b64decode | regex_search('ListenPort = (\\d+)', '\\1') | default(wireguard_port) }}"
+
+    # Determine client IP
+    - name: Get last client IP
+      shell: grep -oP '10\.0\.0\.\d+' {{ wireguard_dir }}/wg0.conf | sort -t. -k4 -n | tail -1 | cut -d. -f4
+      register: last_ip
+      changed_when: false
+      failed_when: false
+
+    - name: Set client VPN IP
+      set_fact:
+        client_vpn_ip: "{{ '10.0.0.2' if (last_ip.stdout | trim | length == 0) else ('10.0.0.' + (last_ip.stdout | trim | int + 1) | string) }}"
+
+    # Generate client keys
+    - name: Generate client private key
+      command: wg genkey
+      register: client_private_key_result
+      no_log: true
+
+    - name: Generate client public key
+      command: wg pubkey
+      args:
+        stdin: "{{ client_private_key_result.stdout }}"
+      register: client_public_key_result
+
+    - name: Set client keys
+      set_fact:
+        client_private_key: "{{ client_private_key_result.stdout }}"
+        client_public_key: "{{ client_public_key_result.stdout }}"
+      no_log: true
+
+    # Create client config
+    - name: Create client config
+      template:
+        src: "{{ playbook_dir }}/config/client.conf.j2"
+        dest: "{{ wireguard_clients_dir }}/{{ client_name }}.conf"
+        mode: "0600"
+      vars:
+        client_dns: "{{ wireguard_client_dns | default('8.8.8.8') }}"
+
+    # Add to server config
+    - name: Add client to server
+      blockinfile:
+        path: "{{ wireguard_dir }}/wg0.conf"
+        marker: "# Client: {{ client_name }} {mark}"
+        block: |
+          # Client: {{ client_name }}
+          [Peer]
+          PublicKey = {{ client_public_key }}
+          AllowedIPs = {{ client_vpn_ip }}/32
+        insertafter: EOF
+
+    # Reload WireGuard
+    - name: Reload WireGuard
+      command: wg syncconf wg0 <(wg-quick strip wg0)
+      args:
+        executable: /bin/bash
+
+    # Display info
+    - name: Show client info
+      debug:
+        msg:
+          - "Client Created: {{ client_name }}"
+          - "Config: {{ wireguard_clients_dir }}/{{ client_name }}.conf"
+          - "VPN IP: {{ client_vpn_ip }}"
+          - "Allowed IPs: {{ allowed_ips | default('(edit manually)') }}"
+          - "Download: scp {{ ansible_host }}:{{ wireguard_clients_dir }}/{{ client_name }}.conf ./"
+
+    - name: Show QR code
+      command: qrencode -t ANSI -r "{{ wireguard_clients_dir }}/{{ client_name }}.conf"
+      register: qr
+      changed_when: false
+      failed_when: false
+
+    - name: Display QR code
+      debug:
+        var: qr.stdout
+      when: qr.stdout is defined

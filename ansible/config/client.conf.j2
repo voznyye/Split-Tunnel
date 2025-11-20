@@ -1,0 +1,13 @@
+# WireGuard client configuration
+[Interface]
+PrivateKey = {{ client_private_key }}
+Address = {{ client_vpn_ip }}/24
+DNS = {{ client_dns }}
+
+[Peer]
+PublicKey = {{ server_public_key }}
+Endpoint = {{ server_public_ip }}:{{ wireguard_port }}
+{% if allowed_ips %}AllowedIPs = {{ allowed_ips }}{% else %}AllowedIPs = 
+# Specify IPs to route through VPN (split tunnel)
+# Example: AllowedIPs = 192.168.1.100/32, 10.0.0.50/32
+# Full tunnel: AllowedIPs = 0.0.0.0/0, ::/0{% endif %}

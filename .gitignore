@@ -30,3 +30,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Ansible
+ansible/inventory.yml
+ansible/inventory.ini
+ansible/*.retry

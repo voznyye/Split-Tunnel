@@ -1,0 +1,5 @@
+# Ansible requirements
+# Install with: pip install -r requirements.txt
+
+ansible>=6.0.0
+
