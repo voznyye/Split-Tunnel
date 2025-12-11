@@ -3,6 +3,7 @@
 PrivateKey = {{ client_private_key }}
 Address = {{ client_vpn_ip }}/24
 DNS = {{ client_dns }}
+{% if client_mtu %}MTU = {{ client_mtu }}{% endif %}
 
 [Peer]
 PublicKey = {{ server_public_key }}

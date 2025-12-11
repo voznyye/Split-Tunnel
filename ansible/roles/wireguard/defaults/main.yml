@@ -9,11 +9,20 @@ wireguard_interface: "eth0"  # Auto-detected if not set
 
 # Client config
 wireguard_client_dns: "8.8.8.8"
+wireguard_client_mtu: ""  # Optional MTU (e.g., 1420 for VoIP). Empty = auto
 
 # System settings
 wireguard_enable_ip_forwarding: true
 wireguard_enable_firewall: true
 wireguard_enable_ssh_security: true
+
+# VoIP/CRM settings
+wireguard_enable_voip_ports: true  # Enable VoIP ports for CRM calls (SIP/RTP)
+wireguard_voip_sip_port: 5060     # Main SIP port
+wireguard_voip_sip_range_start: 3001  # Additional SIP port range start (Sipuni)
+wireguard_voip_sip_range_end: 3240    # Additional SIP port range end (Sipuni)
+wireguard_voip_rtp_start: 10000    # RTP port range start
+wireguard_voip_rtp_end: 60000      # RTP port range end (extended for Sipuni: 30000-60000)
 
 # SSH security
 ssh_max_auth_tries: 3

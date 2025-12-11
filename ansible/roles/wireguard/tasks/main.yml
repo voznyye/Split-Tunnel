@@ -121,6 +121,79 @@
     jump: ACCEPT
   when: wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') != 'RedHat' and ansible_facts.get('ufw', {}).get('status', 'inactive') != 'active'
 
+# Configure VoIP ports for CRM calls (SIP/RTP)
+- name: Allow SIP port (UFW)
+  ufw:
+    rule: allow
+    port: "{{ wireguard_voip_sip_port }}"
+    proto: udp
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('ufw', {}).get('status', 'inactive') == 'active'
+
+- name: Allow SIP port range for Sipuni (UFW)
+  ufw:
+    rule: allow
+    port: "{{ wireguard_voip_sip_range_start }}:{{ wireguard_voip_sip_range_end }}"
+    proto: "{{ item }}"
+  loop: [udp, tcp]
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('ufw', {}).get('status', 'inactive') == 'active'
+
+- name: Allow RTP port range (UFW)
+  ufw:
+    rule: allow
+    port: "{{ wireguard_voip_rtp_start }}:{{ wireguard_voip_rtp_end }}"
+    proto: udp
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('ufw', {}).get('status', 'inactive') == 'active'
+
+- name: Allow SIP port (firewalld)
+  firewalld:
+    port: "{{ wireguard_voip_sip_port }}/udp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') == 'RedHat'
+
+- name: Allow SIP port range for Sipuni (firewalld)
+  firewalld:
+    port: "{{ wireguard_voip_sip_range_start }}-{{ wireguard_voip_sip_range_end }}/{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: [udp, tcp]
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') == 'RedHat'
+
+- name: Allow RTP port range (firewalld)
+  firewalld:
+    port: "{{ wireguard_voip_rtp_start }}-{{ wireguard_voip_rtp_end }}/udp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') == 'RedHat'
+
+- name: Allow SIP port (iptables)
+  iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "{{ wireguard_voip_sip_port }}"
+    jump: ACCEPT
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') != 'RedHat' and ansible_facts.get('ufw', {}).get('status', 'inactive') != 'active'
+
+- name: Allow SIP port range for Sipuni (iptables)
+  iptables:
+    chain: INPUT
+    protocol: "{{ item }}"
+    destination_port: "{{ wireguard_voip_sip_range_start }}:{{ wireguard_voip_sip_range_end }}"
+    jump: ACCEPT
+  loop: [udp, tcp]
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') != 'RedHat' and ansible_facts.get('ufw', {}).get('status', 'inactive') != 'active'
+
+- name: Allow RTP port range (iptables)
+  iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "{{ wireguard_voip_rtp_start }}:{{ wireguard_voip_rtp_end }}"
+    jump: ACCEPT
+  when: wireguard_enable_voip_ports | bool and wireguard_enable_firewall | bool and ansible_facts.get('os_family', '') != 'RedHat' and ansible_facts.get('ufw', {}).get('status', 'inactive') != 'active'
+
 # Secure SSH
 - name: Backup SSH config
   copy:

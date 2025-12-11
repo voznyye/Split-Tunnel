@@ -61,6 +61,7 @@ Playbook automatically:
 - ✅ Generates server keys
 - ✅ Creates server configuration
 - ✅ Configures firewall
+- ✅ Opens VoIP ports (SIP/RTP) for CRM calls
 - ✅ Starts WireGuard
 - ✅ Secures SSH
 
@@ -109,6 +110,14 @@ Override variables in `inventory.yml` or via `-e`:
 - `ssh_max_auth_tries` - Max SSH auth attempts (default: 3)
 - `ssh_login_grace_time` - SSH login grace time (default: 30)
 
+### VoIP/CRM Variables
+
+- `wireguard_enable_voip_ports` - Enable VoIP ports for CRM calls (default: true)
+- `wireguard_voip_sip_port` - SIP port (default: 5060)
+- `wireguard_voip_rtp_start` - RTP port range start (default: 10000)
+- `wireguard_voip_rtp_end` - RTP port range end (default: 20000)
+- `wireguard_client_mtu` - Client MTU (optional, e.g., 1420 for VoIP. Empty = auto)
+
 ## Usage Examples
 
 ### Install with custom parameters
@@ -127,6 +136,15 @@ ansible-playbook -i inventory.yml generate-client.yml \
 
 ansible-playbook -i inventory.yml generate-client.yml \
   -e 'client_name=phone' -e 'allowed_ips=192.168.1.101/32'
+```
+
+### Create client with VoIP MTU
+
+```bash
+ansible-playbook -i inventory.yml generate-client.yml \
+  -e 'client_name=crm-client' \
+  -e 'allowed_ips=0.0.0.0/0,::/0' \
+  -e 'wireguard_client_mtu=1420'
 ```
 
 ### Dry-run check

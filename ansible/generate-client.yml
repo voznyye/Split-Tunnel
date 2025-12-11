@@ -85,6 +85,7 @@
         mode: "0600"
       vars:
         client_dns: "{{ wireguard_client_dns | default('8.8.8.8') }}"
+        client_mtu: "{{ wireguard_client_mtu | default('') }}"
 
     # Add to server config
     - name: Add client to server
