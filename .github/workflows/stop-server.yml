@@ -20,14 +20,13 @@ jobs:
         run: |
           echo "Stopping server $SELECTEL_SERVER_ID..."
           
-          # Stop server using Selectel API
-          # API endpoint: https://api.selectel.ru/v3/vm/{SERVER_ID}/powerOff
-          # Alternative endpoint (if v3 doesn't work): 
-          # https://api.selectel.ru/vpc/resell/v2/servers/{SERVER_ID}/actions/stop
-          response=$(curl -s -w "\n%{http_code}" -X POST \
+          # Stop server using Selectel VScale API
+          # API endpoint: https://api.vscale.io/v1/scalets/{SERVER_ID}/stop
+          response=$(curl -s -w "\n%{http_code}" -X PATCH \
             -H "X-Token: $SELECTEL_API_KEY" \
-            -H "Content-Type: application/json" \
-            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID/powerOff")
+            -H "Content-Type: application/json;charset=UTF-8" \
+            --data-binary "{\"id\":$SELECTEL_SERVER_ID}" \
+            "https://api.vscale.io/v1/scalets/$SELECTEL_SERVER_ID/stop")
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
@@ -49,9 +48,10 @@ jobs:
           echo "Checking server status..."
           sleep 5
           
+          # Check server status using VScale API
           status=$(curl -s -X GET \
             -H "X-Token: $SELECTEL_API_KEY" \
-            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            "https://api.vscale.io/v1/scalets/$SELECTEL_SERVER_ID" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
           
           echo "Server status: $status"
 

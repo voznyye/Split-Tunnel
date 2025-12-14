@@ -324,6 +324,49 @@ Two workflows are configured to automatically manage the WireGuard server:
 
 Both workflows use Selectel VDS API to manage the server remotely. The server will be completely powered off/on, which is more cost-effective with hourly billing.
 
+### Manual API Usage
+
+You can also manage your server directly using the Selectel VScale API with curl commands:
+
+**Stop Server:**
+```bash
+curl 'https://api.vscale.io/v1/scalets/{SERVER_ID}/stop' \
+  -X PATCH \
+  -H 'X-Token: YOUR_API_KEY' \
+  --data-binary '{"id":SERVER_ID}' \
+  -H 'Content-Type: application/json;charset=UTF-8'
+```
+
+**Start Server:**
+```bash
+curl 'https://api.vscale.io/v1/scalets/{SERVER_ID}/start' \
+  -X PATCH \
+  -H 'X-Token: YOUR_API_KEY' \
+  --data-binary '{"id":SERVER_ID}' \
+  -H 'Content-Type: application/json;charset=UTF-8'
+```
+
+Replace:
+- `{SERVER_ID}` with your actual server ID (numeric)
+- `YOUR_API_KEY` with your Selectel API token
+
+**Example:**
+```bash
+# Stop server with ID 10299
+curl 'https://api.vscale.io/v1/scalets/10299/stop' \
+  -X PATCH \
+  -H 'X-Token: 5c21a467f3b37c331e7482599f1e0971c9bedc30258d6977bbd1db2401bb27e8' \
+  --data-binary '{"id":10299}' \
+  -H 'Content-Type: application/json;charset=UTF-8'
+
+# Start server with ID 10299
+curl 'https://api.vscale.io/v1/scalets/10299/start' \
+  -X PATCH \
+  -H 'X-Token: 5c21a467f3b37c331e7482599f1e0971c9bedc30258d6977bbd1db2401bb27e8' \
+  --data-binary '{"id":10299}' \
+  -H 'Content-Type: application/json;charset=UTF-8'
+```
+
 ## Troubleshooting
 
 ### Server Not Starting
