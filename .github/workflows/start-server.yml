@@ -1,0 +1,64 @@
+name: Start WireGuard Server
+
+on:
+  schedule:
+    # Run at 8:00 CET (7:00 UTC in winter, 6:00 UTC in summer)
+    # Using 7:00 UTC to match CET winter time
+    # Note: Adjust to 6:00 UTC during summer time (CEST)
+    - cron: '0 7 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  start-server:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Start Selectel VDS Server
+        env:
+          SELECTEL_API_KEY: ${{ secrets.SELECTEL_API_KEY }}
+          SELECTEL_SERVER_ID: ${{ secrets.SELECTEL_SERVER_ID }}
+        run: |
+          echo "Starting server $SELECTEL_SERVER_ID..."
+          
+          # Start server using Selectel API
+          # API endpoint: https://api.selectel.ru/v3/vm/{SERVER_ID}/powerOn
+          # Alternative endpoint (if v3 doesn't work): 
+          # https://api.selectel.ru/vpc/resell/v2/servers/{SERVER_ID}/actions/start
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "X-Token: $SELECTEL_API_KEY" \
+            -H "Content-Type: application/json" \
+            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID/powerOn")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 202 ]; then
+            echo "✓ Server start command sent successfully"
+            echo "$body"
+          else
+            echo "✗ Error starting server. HTTP code: $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+      - name: Verify server status
+        env:
+          SELECTEL_API_KEY: ${{ secrets.SELECTEL_API_KEY }}
+          SELECTEL_SERVER_ID: ${{ secrets.SELECTEL_SERVER_ID }}
+        run: |
+          echo "Waiting for server to start..."
+          sleep 10
+          
+          # Check server status
+          status=$(curl -s -X GET \
+            -H "X-Token: $SELECTEL_API_KEY" \
+            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+          
+          echo "Server status: $status"
+          
+          if [ "$status" = "active" ] || [ "$status" = "running" ]; then
+            echo "✓ Server is running"
+          else
+            echo "⚠ Server status: $status (may still be starting)"
+          fi
+

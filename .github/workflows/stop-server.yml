@@ -1,0 +1,57 @@
+name: Stop WireGuard Server
+
+on:
+  schedule:
+    # Run at 18:00 CET (17:00 UTC in winter, 16:00 UTC in summer)
+    # Using 17:00 UTC to match CET winter time
+    # Note: Adjust to 16:00 UTC during summer time (CEST)
+    - cron: '0 17 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  stop-server:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Stop Selectel VDS Server
+        env:
+          SELECTEL_API_KEY: ${{ secrets.SELECTEL_API_KEY }}
+          SELECTEL_SERVER_ID: ${{ secrets.SELECTEL_SERVER_ID }}
+        run: |
+          echo "Stopping server $SELECTEL_SERVER_ID..."
+          
+          # Stop server using Selectel API
+          # API endpoint: https://api.selectel.ru/v3/vm/{SERVER_ID}/powerOff
+          # Alternative endpoint (if v3 doesn't work): 
+          # https://api.selectel.ru/vpc/resell/v2/servers/{SERVER_ID}/actions/stop
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "X-Token: $SELECTEL_API_KEY" \
+            -H "Content-Type: application/json" \
+            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID/powerOff")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 202 ]; then
+            echo "✓ Server stop command sent successfully"
+            echo "$body"
+          else
+            echo "✗ Error stopping server. HTTP code: $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+      - name: Verify server status
+        env:
+          SELECTEL_API_KEY: ${{ secrets.SELECTEL_API_KEY }}
+          SELECTEL_SERVER_ID: ${{ secrets.SELECTEL_SERVER_ID }}
+        run: |
+          echo "Checking server status..."
+          sleep 5
+          
+          status=$(curl -s -X GET \
+            -H "X-Token: $SELECTEL_API_KEY" \
+            "https://api.selectel.ru/v3/vm/$SELECTEL_SERVER_ID" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+          
+          echo "Server status: $status"
+

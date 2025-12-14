@@ -267,6 +267,63 @@ Use WireGuard GUI:
 - Select tunnel and activate/deactivate
 - Or use the GUI application
 
+## Automated Server Management (GitHub Actions)
+
+This project includes GitHub Actions workflows for automated server management using **Selectel VDS API**.
+
+### Scheduled Automation
+
+Two workflows are configured to automatically manage the WireGuard server:
+
+1. **Stop Server** - Runs daily at 18:00 CET (17:00 UTC)
+2. **Start Server** - Runs daily at 8:00 CET (7:00 UTC)
+
+**Note:** Times are set for CET winter time. During summer time (CEST), adjust the cron schedules in the workflow files:
+- 18:00 CEST = 16:00 UTC
+- 8:00 CEST = 6:00 UTC
+
+### Setup
+
+1. **Get Selectel API Credentials:**
+
+   You need to create a service user and API key in Selectel:
+
+   - Log in to [Selectel Control Panel](https://panel.selectel.com/)
+   - Go to **Access** → **Service Users**
+   - Click **Add Service User** and create a new service user
+   - Assign necessary permissions for server management
+   - Go to **Access** → **API Keys**
+   - Click **Create API Key**, select the service user, and save the generated key
+
+2. **Find Your Server ID:**
+
+   - In Selectel Control Panel, go to your VDS server
+   - The Server ID can be found in the server details or URL
+   - It's usually a numeric ID or UUID
+
+3. **Configure GitHub Secrets:**
+
+   Go to your repository settings → **Secrets and variables** → **Actions**, and add:
+
+   - `SELECTEL_API_KEY` - Your Selectel API key (from step 1)
+   - `SELECTEL_SERVER_ID` - Your VDS server ID (from step 2)
+
+4. **Enable Workflows:**
+
+   The workflows are automatically enabled when pushed to the repository. They will run on schedule and can also be triggered manually via the GitHub Actions tab.
+
+5. **Manual Trigger:**
+
+   You can manually trigger workflows from the GitHub Actions tab:
+   - Go to **Actions** → Select workflow → **Run workflow**
+
+### Workflow Files
+
+- `.github/workflows/stop-server.yml` - Stops VDS server via Selectel API
+- `.github/workflows/start-server.yml` - Starts VDS server via Selectel API
+
+Both workflows use Selectel VDS API to manage the server remotely. The server will be completely powered off/on, which is more cost-effective with hourly billing.
+
 ## Troubleshooting
 
 ### Server Not Starting
